@@ -22,14 +22,25 @@
 
 int main(void)
 {
-  WDTCTL = WDT_ADLY_16;
+  WDTCTL = WDT_MDLY_32;
   IE1 |= WDTIE;
-  P1DIR |= 0x0D;                            // P1.2 and P1.3 output
-  P1SEL |= 0x0C;                            // P1.2 and P1.3 TA1/2 options
-  CCR0 = 512-1;                             // PWM Period
-  CCTL1 = OUTMOD_7;                         // CCR1 reset/set
-  CCR1 = 400;                               // CCR1 PWM duty cycle
-  TACTL = TASSEL_2 + MC_1;                  // SMCLK, up mode
+
+
+  P1DIR |= BIT6;                            // P1.2 and P1.3 output
+  P1SEL |= BIT6;                            // P1.2 and P1.3 TA1/2 options
+  TA0CCR0 = 512-1;                             // PWM Period
+  TA0CCTL1 = OUTMOD_7;                         // CCR1 reset/set
+  TA0CCR1 = 400;                               // CCR1 PWM duty cycle
+  TA0CTL = TASSEL_2 + MC_1;                  // SMCLK, up mode
+
+  P2DIR |= BIT1 | BIT4;                            // P1.2 and P1.3 output
+  P2SEL |= BIT1 | BIT4;                            // P1.2 and P1.3 TA1/2 options
+  TA1CCR0 = 512-1;                             // PWM Period
+  TA1CCTL1 = OUTMOD_7;                         // CCR1 reset/set
+  TA1CCR1 = 400;                               // CCR1 PWM duty cycle
+  TA1CCTL2 = OUTMOD_7;                         // CCR1 reset/set
+  TA1CCR2 = 400;                               // CCR1 PWM duty cycle
+  TA1CTL = TASSEL_2 + MC_1;                  // SMCLK, up mode
 
   __bis_SR_register(CPUOFF + GIE);          // Enter LPM0 w/interrupt
 }
@@ -44,10 +55,21 @@ void __attribute__ ((interrupt(WDT_VECTOR))) watchdog_timer (void)
 #error Compiler not supported!
 #endif
 {
-  P1OUT ^= 0x01;
-  if(CCR1 <= 100) {
-	  CCR1 = 500;
+  if(TA0CCR1 <= 100) {
+	  TA0CCR1 = 500;
   } else {
-	  CCR1 -= 20;
+	  TA0CCR1 -= 20;
   }
+
+  if(TA1CCR1 >= 500) {
+  	  TA1CCR1 = 100;
+    } else {
+  	  TA1CCR1 += 20;
+    }
+
+  if(TA1CCR2 <= 100) {
+  	  TA1CCR2 = 500;
+    } else {
+  	  TA1CCR2 -= 20;
+    }
 }
