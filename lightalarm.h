@@ -26,11 +26,17 @@ enum _receiver_state_st {
 	REC_TRANS = 1,
 	REC_END = 2,
 };
-typedef enum _receiver_state_st state_st;
+typedef enum _receiver_state_st receiver_state_st;
+
+enum _handle_state_st {
+	STATE_OK = 0x59,
+	STATE_ERROR = 0xEE,
+};
+typedef enum _handle_state_st handle_state_st;
 
 extern volatile uint16_t need_command_handle;
-extern uint8_t rec_buffer[];
-extern uint16_t rec_buffer_it;
+extern volatile uint8_t rec_buffer[];
+extern volatile uint16_t rec_buffer_it;
 
 /* Functions */
 /* Color */
@@ -43,6 +49,9 @@ void set_color_hex(uint32_t hex);
  * 	 - [1byte] - end 0xFE
  */
 int receiver_handler(uint8_t byte);
-void handle_command(uint8_t msg[], int size);
+void handle_command(volatile uint8_t msg[], volatile uint16_t size);
+
+/* Sender */
+inline void send_status(handle_state_st state);
 
 #endif /* LIGHTALARM_H_ */

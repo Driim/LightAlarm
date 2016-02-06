@@ -7,9 +7,9 @@
 
 #include "lightalarm.h"
 
-uint8_t rec_buffer[RECEIVER_BUFFER_SIZE];
-uint16_t rec_buffer_it = 0;
-static state_st reciver_state = REC_WAIT_TRANS;
+volatile uint8_t rec_buffer[RECEIVER_BUFFER_SIZE];
+volatile uint16_t rec_buffer_it = 0;
+volatile receiver_state_st reciver_state = REC_WAIT_TRANS;
 
  void set_color(uint8_t red, uint8_t green, uint8_t blue) {
 	if(red <= 255 && green <= 255 && blue <= 255) {
@@ -60,10 +60,8 @@ int receiver_handler(uint8_t byte) {
 		break;
 	}
 	case REC_END: {
-		if(!need_command_handle) {
-			//command was handled
-			reciver_state = REC_WAIT_TRANS;
-		}
+		__no_operation(); /* wait for handle command */
+		break;
 	}
 	default: {
 		/* TODO: error state, signal */
@@ -73,9 +71,16 @@ int receiver_handler(uint8_t byte) {
 	return 0;
 }
 
-void handle_command(uint8_t msg[], int size) {
+void handle_command(volatile uint8_t msg[], volatile uint16_t size) {
 	/*TODO: write */
 
-	//after all reset state
+	// send result
+	send_status(STATE_OK);
+	// after all reset state
 	need_command_handle = 0;
+	reciver_state = REC_WAIT_TRANS;
+}
+
+inline void send_status(handle_state_st state) {
+	UCA0TXBUF = state;
 }

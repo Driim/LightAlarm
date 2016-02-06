@@ -112,8 +112,8 @@ void __attribute__ ((interrupt(USCIAB0RX_VECTOR))) USCI0RX_ISR (void)
 #error Compiler not supported!
 #endif
 {
-	//read 1 byte from UCA0RXBUF
 	if(receiver_handler(UCA0RXBUF)) {
-		__bic_SR_register_on_exit(LPM0_bits);
+		// receiver_handler return 1 if need to handle command, so wake up
+		__bic_SR_register_on_exit(LPM0_bits + GIE);
 	}
 }
