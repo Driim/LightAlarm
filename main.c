@@ -1,9 +1,7 @@
 //***************************************************************************************
 //  MSP430 Light Alarm
 //
-//  Description: Световой будильник управляемый по bluetooth. 
-//               Используем Timer0_A3 и Timer1_A3 в режиме ШИМ 
-//               для управления тремя светодиодами.
+//  Description: �������� ���������, ����������� � bluetooth.
 //
 //                MSP4302553
 //             -----------------
@@ -16,36 +14,66 @@
 //            |             P2.1|-->PWM LED
 //            |                 |
 //            |             P2.4|-->PWM LED
+//            |                 |
+//            |     P1.2/UCA0TXD|------------>
+//            |                 | 115200 - 8N1
+//            |     P1.1/UCA0RXD|<------------
 //
 //  D. Falko
 //  February 2016
 //  Built with Code Composer Studio v6
 //***************************************************************************************
+#include "lightalarm.h"
 
-#include <msp430.h>				
+static uint16_t timer = 0;
+volatile uint16_t need_command_handle = 0;
 
-int main(void)
-{
-  WDTCTL = WDT_MDLY_32;                        // Watchdog clock source
-  IE1 |= WDTIE;                                // Watchdog Interrupt enable
+int main(void) {
+	if (CALBC1_1MHZ==0xFF) {					  // If calibration constant erased
+		while(1);                                 // do not load, trap CPU!!
+	}
 
-  P1DIR |= BIT6;                               // P1.6 
-  P1SEL |= BIT6;                               // P1.6 TA1/2 options
-  TA0CCR0 = 512-1;                             // PWM Period
-  TA0CCTL1 = OUTMOD_7;                         // CCR1 reset/set
-  TA0CCR1 = 400;                               // CCR1 PWM duty cycle
-  TA0CTL = TASSEL_2 + MC_1;                    // SMCLK, up mode
+	DCOCTL = 0;                                 // Select lowest DCOx and MODx settings
+	BCSCTL1 = CALBC1_1MHZ;                      // Set DCO
+	DCOCTL = CALDCO_1MHZ;
 
-  P2DIR |= BIT1 | BIT4;                        // P2.1 and P2.4 output
-  P2SEL |= BIT1 | BIT4;                        // P2.1 and P2.4 TA1/2 options
-  TA1CCR0 = 512-1;                             // PWM Period
-  TA1CCTL1 = OUTMOD_7;                         // CCR1 reset/set
-  TA1CCR1 = 400;                               // CCR1 PWM duty cycle
-  TA1CCTL2 = OUTMOD_7;                         // CCR1 reset/set
-  TA1CCR2 = 400;                               // CCR1 PWM duty cycle
-  TA1CTL = TASSEL_2 + MC_1;                    // SMCLK, up mode
+	WDTCTL = WDT_MDLY_8;                        // Watchdog clock source
+	IE1 |= WDTIE;                               // Watchdog Interrupt enable
 
-  __bis_SR_register(CPUOFF + GIE);             // Enter LPM0 w/interrupt
+	// PWM config
+	P1DIR |= BIT6;                               // P1.6
+	P1SEL |= BIT6;                               // P1.6 TA1/2 options
+	TA0CCR0 = PWM_PERIOD;                        // PWM Period
+	TA0CCTL1 = OUTMOD_7;                         // CCR1 reset/set
+	TA0CCR1 = PWM_PERIOD;                        // CCR1 PWM duty cycle
+	TA0CTL = TASSEL_2 + MC_1;                    // SMCLK, up mode
+
+	P2DIR |= BIT1 | BIT4;                        // P2.1 and P2.4 output
+	P2SEL |= BIT1 | BIT4;                        // P2.1 and P2.4 TA1/2 options
+	TA1CCR0 = PWM_PERIOD;                        // PWM Period
+	TA1CCTL1 = OUTMOD_7;                         // CCR1 reset/set
+	TA1CCR1 = PWM_PERIOD;                        // CCR1 PWM duty cycle
+	TA1CCTL2 = OUTMOD_7;                         // CCR1 reset/set
+	TA1CCR2 = PWM_PERIOD;                        // CCR1 PWM duty cycle
+	TA1CTL = TASSEL_2 + MC_1;                    // SMCLK, up mode
+
+	// UART config
+	P1SEL |= BIT1 + BIT2 ;                       // P1.1 = RXD, P1.2=TXD
+	P1SEL2 |= BIT1 + BIT2;
+	UCA0CTL1 |= UCSSEL_2;                        // SMCLK
+	UCA0BR0 = 8;                                 // 1MHz 115200
+	UCA0BR1 = 0;                                 // 1MHz 115200
+	UCA0MCTL = UCBRS2 + UCBRS0;                  // Modulation UCBRSx = 5
+	UCA0CTL1 &= ~UCSWRST;                        // **Initialize USCI state machine**
+	IE2 |= UCA0RXIE;                             // Enable USCI_A0 RX interrupt
+
+	while(1) {
+		__bis_SR_register(LPM0_bits + GIE);      // Enter LPM0 w/interrupt
+
+		if(need_command_handle) {
+			handle_command(rec_buffer, rec_buffer_it);
+		}
+	}
 }
 
 // Watchdog Timer interrupt service routine
@@ -58,22 +86,34 @@ void __attribute__ ((interrupt(WDT_VECTOR))) watchdog_timer (void)
 #error Compiler not supported!
 #endif
 {
-  // 
-  if(TA0CCR1 <= 100) {
-	  TA0CCR1 = 500;
-  } else {
-	  TA0CCR1 -= 20;
-  }
 
-  if(TA1CCR1 >= 500) {
-  	  TA1CCR1 = 100;
-    } else {
-  	  TA1CCR1 += 20;
-    }
+	if(timer == 360) { //3 sec
+		set_color(232, 55, 226);
+	} else if(timer == 720) {
+		set_color(0, 17, 255);
+	} else if(timer == 1080) {
+		set_color(0, 255, 34);
+	} else if(timer == 1460) {
+		set_color(208, 187, 0);
+	} else if(timer == 1820) {
+		timer = 0;
+	}
 
-  if(TA1CCR2 <= 100) {
-  	  TA1CCR2 = 500;
-    } else {
-  	  TA1CCR2 -= 20;
-    }
+	timer++;
+}
+
+// UART Rx ISR
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=USCIAB0RX_VECTOR
+__interrupt void USCI0RX_ISR(void)
+#elif defined(__GNUC__)
+void __attribute__ ((interrupt(USCIAB0RX_VECTOR))) USCI0RX_ISR (void)
+#else
+#error Compiler not supported!
+#endif
+{
+	//read 1 byte from UCA0RXBUF
+	if(receiver_handler(UCA0RXBUF)) {
+		__bic_SR_register_on_exit(LPM0_bits);
+	}
 }
