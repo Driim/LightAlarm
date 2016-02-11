@@ -8,6 +8,7 @@
 #include "lightalarm.h"
 
 volatile uint8_t rec_buffer[RECEIVER_BUFFER_SIZE];
+volatile command_st commands_buffer[COMMAND_BUFFER_SIZE];
 volatile uint16_t rec_buffer_it = 0;
 volatile receiver_state_en reciver_state = REC_WAIT_TRANS;
 
@@ -86,7 +87,7 @@ void handle_command(volatile uint8_t msg[], volatile uint16_t buf_size) {
 	switch(command) {
 	case COM_CHANGE_COLOR: {
 		/*check size of command without command and size bytes*/
-		if(size != 3) {
+		if(size != 4) {
 			send_status(HANDLE_ERROR);
 			goto out;
 		}

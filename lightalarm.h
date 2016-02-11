@@ -13,6 +13,7 @@
 /* Defines */
 #define PWM_PERIOD           (256) /* rgb in hex max 255 */
 #define RECEIVER_BUFFER_SIZE (30)
+#define COMMAND_BUFFER_SIZE  (400)
 #define RECEIVER_START       (0xEF)
 #define RECEIVER_END         (0xFE)
 
@@ -42,9 +43,19 @@ enum _command {
 };
 typedef enum _command command_en;
 
+struct _command_st {
+	uint16_t time;
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
+};
+typedef struct _command_st command_st;
+
 extern volatile uint16_t need_command_handle;
 extern volatile uint8_t rec_buffer[];
 extern volatile uint16_t rec_buffer_it;
+
+extern volatile command_st commands_buffer[];
 
 /* Functions */
 /* Color */
