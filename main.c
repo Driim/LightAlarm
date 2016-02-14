@@ -25,50 +25,85 @@
 //***************************************************************************************
 #include "lightalarm.h"
 
-static uint16_t timer = 0;
+volatile static uint16_t timer = 0;
 volatile uint16_t need_command_handle = 0;
 
 int main(void) {
-	if (CALBC1_1MHZ==0xFF) {					  // If calibration constant erased
-		while(1);                                 // do not load, trap CPU!!
+	// If calibration constant erased
+	if (CALBC1_1MHZ==0xFF) {
+		// do not load, trap CPU!!
+		while(1);
 	}
 
-	DCOCTL = 0;                                 // Select lowest DCOx and MODx settings
-	BCSCTL1 = CALBC1_1MHZ;                      // Set DCO
+	//Clock
+	// Select lowest DCOx and MODx settings
+	DCOCTL = 0;
+	// Set DCO
+	BCSCTL1 = CALBC1_1MHZ;
 	DCOCTL = CALDCO_1MHZ;
 
-	WDTCTL = WDT_MDLY_8;                        // Watchdog clock source
-	IE1 |= WDTIE;                               // Watchdog Interrupt enable
+	// Watchdog
+	// Watchdog clock source
+	WDTCTL = WDT_MDLY_8;
+	// Watchdog Interrupt enable
+	IE1 |= WDTIE;
 
 	// PWM config
-	P1DIR |= BIT6;                               // P1.6
-	P1SEL |= BIT6;                               // P1.6 TA1/2 options
-	TA0CCR0 = PWM_PERIOD;                        // PWM Period
-	TA0CCTL1 = OUTMOD_7;                         // CCR1 reset/set
-	TA0CCR1 = PWM_PERIOD;                        // CCR1 PWM duty cycle
-	TA0CTL = TASSEL_2 + MC_1;                    // SMCLK, up mode
+	// P1.6
+	P1DIR |= BIT6;
+	// P1.6 TA1/2 options
+	P1SEL |= BIT6;
+	// PWM Period
+	TA0CCR0 = PWM_PERIOD;
+	// CCR1 reset/set
+	TA0CCTL1 = OUTMOD_7;
+	// CCR1 PWM duty cycle
+	TA0CCR1 = PWM_PERIOD;
+	// SMCLK, up mode
+	TA0CTL = TASSEL_2 + MC_1;
 
-	P2DIR |= BIT1 | BIT4;                        // P2.1 and P2.4 output
-	P2SEL |= BIT1 | BIT4;                        // P2.1 and P2.4 TA1/2 options
-	TA1CCR0 = PWM_PERIOD;                        // PWM Period
-	TA1CCTL1 = OUTMOD_7;                         // CCR1 reset/set
-	TA1CCR1 = PWM_PERIOD;                        // CCR1 PWM duty cycle
-	TA1CCTL2 = OUTMOD_7;                         // CCR1 reset/set
-	TA1CCR2 = PWM_PERIOD;                        // CCR1 PWM duty cycle
-	TA1CTL = TASSEL_2 + MC_1;                    // SMCLK, up mode
+	// P2.1 and P2.4 output
+	P2DIR |= BIT1 | BIT4;
+	// P2.1 and P2.4 TA1/2 options
+	P2SEL |= BIT1 | BIT4;
+	// PWM Period
+	TA1CCR0 = PWM_PERIOD;
+	// CCR1 reset/set
+	TA1CCTL1 = OUTMOD_7;
+	// CCR1 PWM duty cycle
+	TA1CCR1 = PWM_PERIOD;
+	// CCR1 reset/set
+	TA1CCTL2 = OUTMOD_7;
+	// CCR1 PWM duty cycle
+	TA1CCR2 = PWM_PERIOD;
+	// SMCLK, up mode
+	TA1CTL = TASSEL_2 + MC_1;
 
 	// UART config
-	DCOCTL = 0;                               // Select lowest DCOx and MODx settings
-	BCSCTL1 = CALBC1_1MHZ;                    // Set DCO
+	// Select lowest DCOx and MODx settings
+	DCOCTL = 0;
+	// Set DCO
+	BCSCTL1 = CALBC1_1MHZ;
 	DCOCTL = CALDCO_1MHZ;
-	P1SEL = BIT1 + BIT2 ;                     // P1.1 = RXD, P1.2=TXD
-	P1SEL2 = BIT1 + BIT2 ;                    // P1.1 = RXD, P1.2=TXD
-	UCA0CTL1 |= UCSSEL_2;                     // SMCLK
-	UCA0BR0 = 104;                            // 1MHz 9600
-	UCA0BR1 = 0;                              // 1MHz 9600
-	UCA0MCTL = UCBRS0;                        // Modulation UCBRSx = 1
-	UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
-	IE2 |= UCA0RXIE;                          // Enable USCI_A0 RX interrupt
+	// P1.1 = RXD, P1.2=TXD
+	P1SEL = BIT1 + BIT2;
+	// P1.1 = RXD, P1.2=TXD
+	P1SEL2 = BIT1 + BIT2;
+	// SMCLK
+	UCA0CTL1 |= UCSSEL_2;
+	// 1MHz 9600
+	UCA0BR0 = 104;
+	// 1MHz 9600
+	UCA0BR1 = 0;
+	// Modulation UCBRSx = 1
+	UCA0MCTL = UCBRS0;
+	// **Initialize USCI state machine**
+	UCA0CTL1 &= ~UCSWRST;
+	// Enable USCI_A0 RX interrupt
+	IE2 |= UCA0RXIE;
+
+	// Set color to green
+	set_color(0, 255, 0);
 
 	while(1) {
 		__bis_SR_register(LPM0_bits + GIE);      // Enter LPM0 w/interrupt
@@ -89,20 +124,9 @@ void __attribute__ ((interrupt(WDT_VECTOR))) watchdog_timer (void)
 #error Compiler not supported!
 #endif
 {
-
-	if(timer == 360) { //6 sec
-		set_color(232, 55, 226);
-	} else if(timer == 720) {
-		set_color(0, 17, 255);
-	} else if(timer == 1080) {
-		set_color(0, 255, 34);
-	} else if(timer == 1460) {
-		set_color(208, 187, 0);
-	} else if(timer == 1820) {
-		timer = 0;
-	}
-
-	timer++;
+/*
+	TODO: watchdog will be timer for pattern playing
+*/
 }
 
 // UART Rx ISR
