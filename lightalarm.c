@@ -1,7 +1,7 @@
 /*
  * lightalarm.c
  *
- *  Created on: 06 february 2016 ã.
+ *  Created on: 06 february 2016 Ã£.
  *      Author: D. Falko
  */
 
@@ -13,11 +13,9 @@ volatile uint16_t rec_buffer_it = 0;
 volatile receiver_state_en reciver_state = REC_WAIT_TRANS;
 
  void set_color(uint8_t red, uint8_t green, uint8_t blue) {
-	if(red <= 255 && green <= 255 && blue <= 255) {
-		TA0CCR1 = 255 - red;
-		TA1CCR1 = 255 - blue;
-		TA1CCR2 = 255 - green;
-	}
+	TA0CCR1 = 255 - red;
+	TA1CCR1 = 255 - blue;
+	TA1CCR2 = 255 - green;
 }
 
 void set_color_hex(uint32_t hex) {
