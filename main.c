@@ -1,7 +1,7 @@
 //***************************************************************************************
 //  MSP430 Light Alarm
 //
-//  Description: Световой будильник, управляемый с bluetooth.
+//  Description: RGB led control system
 //
 //                MSP4302553
 //             -----------------
@@ -80,11 +80,6 @@ int main(void) {
 	TA1CTL = TASSEL_2 + MC_1;
 
 	// UART config
-	// Select lowest DCOx and MODx settings
-	DCOCTL = 0;
-	// Set DCO
-	BCSCTL1 = CALBC1_1MHZ;
-	DCOCTL = CALDCO_1MHZ;
 	// P1.1 = RXD, P1.2=TXD
 	P1SEL = BIT1 + BIT2;
 	// P1.1 = RXD, P1.2=TXD
